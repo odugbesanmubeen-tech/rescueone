@@ -1,0 +1,13 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Vehicles{% endblock %}
+{% block page %}
+<div class="page-head"><h1>Vehicles</h1>{% if request.user.is_admin_role %}<a class="btn btn-primary" href="{% url 'dashboard:vehicle_create' %}">Add vehicle</a>{% endif %}</div>
+<div class="table-wrap">
+{% if vehicles %}
+<table class="table">
+  <thead><tr><th>Number</th><th>Type</th><th>Station</th><th>Available</th></tr></thead>
+  <tbody>{% for v in vehicles %}<tr><td>{{ v.number }}</td><td>{{ v.get_vehicle_type_display }}</td><td>{{ v.station|default:"—" }}</td><td>{{ v.is_available|yesno:"Yes,No" }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p class="empty">No vehicles yet.</p>{% endif %}
+</div>
+{% endblock %}

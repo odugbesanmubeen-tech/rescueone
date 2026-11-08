@@ -1,0 +1,21 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block page %}
+<h1>Analytics</h1>
+<div class="stats">
+  <div class="stat"><span>{{ stats.total_incidents }}</span><label>Total incidents</label></div>
+  <div class="stat"><span>{{ stats.resolved_incidents }}</span><label>Resolved</label></div>
+  <div class="stat"><span>{% if avg_resolution is not None %}{{ avg_resolution }} min{% else %}—{% endif %}</span><label>Avg. time to resolve</label></div>
+</div>
+<div class="grid-2">
+  <section class="card"><h2>By status</h2>
+    <table class="table"><tbody>{% for label, n in by_status %}<tr><td>{{ label }}</td><td>{{ n }}</td></tr>{% endfor %}</tbody></table></section>
+  <section class="card"><h2>By category</h2>
+    <table class="table"><tbody>{% for label, n in by_category %}<tr><td>{{ label }}</td><td>{{ n }}</td></tr>{% endfor %}</tbody></table></section>
+</div>
+<section class="card"><h2>Incidents per day (last 14 days)</h2>
+  {% for day, n, pct in daily %}
+  <div class="bar-row"><span class="bar-label">{{ day|date:"d M" }}</span><div class="bar"><div style="width: {{ pct }}%"></div></div><span class="bar-n">{{ n }}</span></div>
+  {% endfor %}
+</section>
+{% endblock %}

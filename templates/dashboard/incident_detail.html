@@ -1,0 +1,100 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block title %}Incident #{{ incident.pk }}{% endblock %}
+{% block page %}
+<div class="page-head">
+  <h1>Incident #{{ incident.pk }} <span class="badge badge-{{ incident.status|lower }}">{{ incident.get_status_display }}</span></h1>
+  <a class="btn btn-ghost" href="{% url 'dashboard:incident_list' %}">← All incidents</a>
+</div>
+
+<div class="grid-2">
+  <section class="card">
+    <h2>Details</h2>
+    <dl class="dl">
+      <dt>Category</dt><dd>{{ incident.get_category_display }}</dd>
+      <dt>Reported by</dt><dd>{{ incident.reporter_display }}{% if incident.citizen %} ({{ incident.citizen.email }}){% endif %}</dd>
+      <dt>Phone</dt><dd>{{ incident.reporter_phone|default:incident.citizen.phone|default:"—" }}</dd>
+      <dt>Source</dt><dd>{{ incident.get_source_display }}</dd>
+      <dt>Address</dt><dd>{{ incident.address_text|default:"—" }}</dd>
+      <dt>Coordinates</dt>
+      <dd>{% if incident.has_location %}{{ incident.lat|floatformat:6 }}, {{ incident.lng|floatformat:6 }}
+        ({{ incident.get_location_source_display|default:"unknown source" }}{% if incident.location_accuracy_m %}, ±{{ incident.location_accuracy_m|floatformat:0 }} m{% endif %}{% if incident.location_captured_at %}, captured {{ incident.location_captured_at|timesince }} ago{% endif %})
+        {% else %}Not provided{% endif %}</dd>
+      <dt>Description</dt><dd>{{ incident.description|default:"—"|linebreaksbr }}</dd>
+      <dt>Reported</dt><dd>{{ incident.created_at|date:"d M Y H:i" }}</dd>
+      {% if incident.closed_at %}<dt>Closed</dt><dd>{{ incident.closed_at|date:"d M Y H:i" }}</dd>{% endif %}
+    </dl>
+    {% if media %}
+      <h3>Attachments</h3>
+      <ul>{% for m in media %}<li><a href="{{ m.file.url }}" target="_blank" rel="noopener">{{ m.get_media_type_display }} · {{ m.uploaded_at|date:"d M H:i" }}</a></li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+  <section class="card">
+    <h2>Location</h2>
+    {% if incident.has_location %}<div id="map" class="map"></div>
+    {% else %}<p class="empty">No coordinates for this incident. Use the address above.</p>{% endif %}
+  </section>
+</div>
+
+<div class="grid-2">
+  <section class="card">
+    <h2>Dispatch</h2>
+    {% if assignments %}
+    <table class="table">
+      <thead><tr><th>Responder</th><th>Status</th><th>Offered</th><th></th></tr></thead>
+      <tbody>
+      {% for a in assignments %}
+        <tr><td>{{ a.responder.user.display_name }}</td><td><span class="badge">{{ a.get_status_display }}</span></td><td>{{ a.offered_at|date:"H:i" }}</td>
+        <td>{% if a.status == "OFFERED" %}
+          <form method="post" action="{% url 'dashboard:assignment_cancel' a.pk %}">{% csrf_token %}<button class="btn btn-small btn-ghost" type="submit">Withdraw</button></form>
+        {% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="empty">No responders offered yet.</p>{% endif %}
+
+    {% if incident.is_active %}
+    <h3>Available responders{% if incident.has_location %} (nearest first){% endif %}</h3>
+    {% if candidates %}
+    <table class="table">
+      <thead><tr><th>Name</th><th>Type</th><th>Distance</th><th>Location</th><th></th></tr></thead>
+      <tbody>
+      {% for r in candidates %}
+        <tr>
+          <td>{{ r.user.display_name }}</td><td>{{ r.get_responder_type_display }}</td>
+          <td>{% if r.distance_km is not None %}{{ r.distance_km|floatformat:1 }} km{% else %}—{% endif %}</td>
+          <td>{% if r.last_location_at %}{% if r.location_is_stale %}<span class="badge badge-stale">Outdated · {{ r.last_location_at|timesince }} ago</span>{% else %}{{ r.last_location_at|timesince }} ago{% endif %}{% else %}<span class="muted">Not shared</span>{% endif %}</td>
+          <td><form method="post" action="{% url 'dashboard:incident_assign' incident.pk %}" onsubmit="return confirm('Send dispatch offer to {{ r.user.display_name|escapejs }}?');">
+            {% csrf_token %}<input type="hidden" name="responder_id" value="{{ r.pk }}"><button class="btn btn-small btn-primary" type="submit">Assign</button></form></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="empty">No responders are online right now.</p>{% endif %}
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Status</h2>
+    {% if status_form %}
+    <form method="post" action="{% url 'dashboard:incident_status' incident.pk %}" class="form" onsubmit="return confirm('Update the incident status?');">
+      {% csrf_token %}{{ status_form.as_div }}
+      <button class="btn btn-primary" type="submit">Update status</button>
+    </form>
+    {% else %}<p class="muted">{% if incident.is_active %}Status moves forward when responders accept the dispatch offer.{% else %}This incident is closed.{% endif %}</p>{% endif %}
+    <h3>History</h3>
+    <ul class="timeline">
+    {% for h in history %}
+      <li><strong>{{ h.get_to_status_display }}</strong> · {{ h.created_at|date:"d M H:i" }}
+        {% if h.changed_by %}· {{ h.changed_by.display_name }}{% endif %}{% if h.note %}<br><span class="muted small">{{ h.note }}</span>{% endif %}</li>
+    {% endfor %}
+    </ul>
+  </section>
+</div>
+{{ incident_markers|json_script:"map-incidents" }}
+{{ responder_markers|json_script:"map-responders" }}
+{% endblock %}
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{% static 'js/dashboard_map.js' %}"></script>
+{% endblock %}

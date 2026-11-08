@@ -1,0 +1,20 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Dispatchers{% endblock %}
+{% block page %}
+<div class="page-head"><h1>Dispatchers</h1><a class="btn btn-primary" href="{% url 'dashboard:dispatcher_create' %}">Add dispatcher</a></div>
+<div class="table-wrap">
+{% if page %}
+<table class="table">
+  <thead><tr><th>Name</th><th>Employee ID</th><th>Station</th><th>Account</th></tr></thead>
+  <tbody>
+  {% for d in page %}
+    <tr><td>{{ d.user.display_name }}<br><span class="muted small">{{ d.user.email }}</span></td><td>{{ d.employee_id|default:"—" }}</td><td>{{ d.station|default:"—" }}</td>
+    <td><form method="post" action="{% url 'dashboard:user_toggle_active' d.user.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <button class="btn btn-small btn-ghost" type="submit">{% if d.user.is_active %}Deactivate{% else %}Activate{% endif %}</button></form></td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="empty">No dispatchers yet.</p>{% endif %}
+</div>
+{% include "dashboard/_pagination.html" %}
+{% endblock %}

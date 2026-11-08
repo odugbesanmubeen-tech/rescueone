@@ -1,0 +1,53 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block title %}Overview{% endblock %}
+{% block page %}
+<div class="page-head">
+  <h1>Operations overview</h1>
+  <a class="btn btn-primary" href="{% url 'dashboard:incident_create' %}">Log incident</a>
+</div>
+<div class="stats" data-url="{% url 'dashboard:stats_api' %}">
+  <div class="stat"><span data-stat="total_citizens">{{ stats.total_citizens }}</span><label>Citizens</label></div>
+  <div class="stat"><span data-stat="total_responders">{{ stats.total_responders }}</span><label>Responders</label></div>
+  <div class="stat"><span data-stat="total_incidents">{{ stats.total_incidents }}</span><label>Total incidents</label></div>
+  <div class="stat stat-alert"><span data-stat="active_incidents">{{ stats.active_incidents }}</span><label>Active</label></div>
+  <div class="stat stat-alert"><span data-stat="pending_incidents">{{ stats.pending_incidents }}</span><label>Pending</label></div>
+  <div class="stat"><span data-stat="assigned_incidents">{{ stats.assigned_incidents }}</span><label>Assigned</label></div>
+  <div class="stat"><span data-stat="resolved_incidents">{{ stats.resolved_incidents }}</span><label>Resolved</label></div>
+  <div class="stat"><span data-stat="available_responders">{{ stats.available_responders }}</span><label>Available responders</label></div>
+  <div class="stat"><span data-stat="busy_responders">{{ stats.busy_responders }}</span><label>Busy responders</label></div>
+</div>
+<p class="muted small" id="live-status">Figures refresh every 15 seconds from the database.</p>
+
+<div class="grid-2">
+  <section class="card">
+    <h2>Live map</h2>
+    <div id="map" class="map"></div>
+    {% if not incident_markers and not responder_markers %}
+      <p class="muted small">No active incidents or responder locations to show yet.</p>
+    {% endif %}
+    <p class="muted small">Blue markers are responders; grey outline means the location is outdated. Locations update only while a responder's app is open and permitted.</p>
+  </section>
+  <section class="card">
+    <h2>Active incidents</h2>
+    {% if recent %}
+    <table class="table">
+      <thead><tr><th>#</th><th>Category</th><th>Status</th><th>Reported</th></tr></thead>
+      <tbody>
+      {% for i in recent %}
+        <tr><td><a href="{% url 'dashboard:incident_detail' i.pk %}">#{{ i.pk }}</a></td><td>{{ i.get_category_display }}</td>
+        <td><span class="badge badge-{{ i.status|lower }}">{{ i.get_status_display }}</span></td><td>{{ i.created_at|timesince }} ago</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="empty">No active incidents.</p>{% endif %}
+  </section>
+</div>
+{{ incident_markers|json_script:"map-incidents" }}
+{{ responder_markers|json_script:"map-responders" }}
+{% endblock %}
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{% static 'js/dashboard_map.js' %}"></script>
+<script src="{% static 'js/dashboard_stats.js' %}"></script>
+{% endblock %}

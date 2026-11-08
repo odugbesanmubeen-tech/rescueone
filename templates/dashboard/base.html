@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+{% block content %}
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">Emergency Ops</div>
+    <nav>
+      <a href="{% url 'dashboard:overview' %}">Overview</a>
+      <a href="{% url 'dashboard:incident_list' %}">Incidents</a>
+      <a href="{% url 'dashboard:responder_list' %}">Responders</a>
+      <a href="{% url 'dashboard:citizen_list' %}">Citizens</a>
+      <a href="{% url 'dashboard:station_list' %}">Stations</a>
+      <a href="{% url 'dashboard:vehicle_list' %}">Vehicles</a>
+      <a href="{% url 'dashboard:analytics' %}">Analytics</a>
+      <a href="{% url 'dashboard:notification_list' %}">Notifications{% if unread_notifications %} <span class="pill">{{ unread_notifications }}</span>{% endif %}</a>
+      {% if request.user.is_admin_role %}
+      <div class="nav-sep">Administration</div>
+      <a href="{% url 'dashboard:dispatcher_list' %}">Dispatchers</a>
+      <a href="{% url 'dashboard:audit_log' %}">Audit log</a>
+      <a href="{% url 'admin:index' %}">Django admin</a>
+      {% endif %}
+    </nav>
+    <form method="post" action="{% url 'accounts:logout' %}" class="logout">
+      {% csrf_token %}
+      <div class="muted small">{{ request.user.display_name }} · {{ request.user.get_role_display }}</div>
+      <button class="btn btn-ghost btn-block" type="submit">Sign out</button>
+    </form>
+  </aside>
+  <main class="main">
+    {% for m in messages %}<div class="alert alert-{{ m.tags }}">{{ m }}</div>{% endfor %}
+    {% block page %}{% endblock %}
+  </main>
+</div>
+{{ MAP_CONFIG|json_script:"map-config" }}
+{% endblock %}

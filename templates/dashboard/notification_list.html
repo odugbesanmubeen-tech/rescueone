@@ -1,0 +1,16 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block page %}
+<div class="page-head"><h1>Notifications</h1>
+  <form method="post" action="{% url 'dashboard:notifications_read' %}">{% csrf_token %}<button class="btn btn-ghost" type="submit">Mark all read</button></form></div>
+{% if page %}
+<ul class="notif">
+{% for n in page %}
+  <li class="{% if not n.is_read %}unread{% endif %}">{{ n.message }}
+    {% if n.incident_id %}· <a href="{% url 'dashboard:incident_detail' n.incident_id %}">View incident</a>{% endif %}
+    <span class="muted small">{{ n.created_at|timesince }} ago</span></li>
+{% endfor %}
+</ul>
+{% else %}<p class="empty">No notifications.</p>{% endif %}
+{% include "dashboard/_pagination.html" %}
+{% endblock %}

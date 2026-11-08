@@ -1,0 +1,7 @@
+Django>=5.1,<5.3
+channels>=4.1
+channels-redis>=4.2
+daphne>=4.1
+python-dotenv>=1.0
+Pillow>=10.0
+django-ratelimit>=4.1

@@ -1,0 +1,32 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Responders{% endblock %}
+{% block page %}
+<div class="page-head"><h1>Responders</h1>{% if request.user.is_admin_role %}<a class="btn btn-primary" href="{% url 'dashboard:responder_create' %}">Add responder</a>{% endif %}</div>
+<form method="get" class="filters card">
+  <select name="availability"><option value="">All</option>{% for v,l in availabilities %}<option value="{{ v }}" {% if v == availability %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+  <button class="btn btn-primary" type="submit">Filter</button>
+</form>
+<div class="table-wrap">
+{% if page %}
+<table class="table">
+  <thead><tr><th>Name</th><th>Type</th><th>Station</th><th>Vehicle</th><th>Availability</th><th>Last location</th><th>Account</th></tr></thead>
+  <tbody>
+  {% for r in page %}
+    <tr>
+      <td>{{ r.user.display_name }}<br><span class="muted small">{{ r.user.email }}</span></td>
+      <td>{{ r.get_responder_type_display }}</td><td>{{ r.station|default:"—" }}</td><td>{{ r.vehicle|default:"—" }}</td>
+      <td><span class="badge">{{ r.get_availability_display }}</span></td>
+      <td>{% if r.last_location_at %}{{ r.last_location_at|timesince }} ago{% if r.location_is_stale %} <span class="badge badge-stale">Outdated</span>{% endif %}{% else %}<span class="muted">Never shared</span>{% endif %}</td>
+      <td>{% if request.user.is_admin_role %}
+        <form method="post" action="{% url 'dashboard:user_toggle_active' r.user.pk %}">{% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button class="btn btn-small btn-ghost" type="submit">{% if r.user.is_active %}Deactivate{% else %}Activate{% endif %}</button></form>
+        {% else %}{% if r.user.is_active %}Active{% else %}Deactivated{% endif %}{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="empty">No responders yet.</p>{% endif %}
+</div>
+{% include "dashboard/_pagination.html" %}
+{% endblock %}

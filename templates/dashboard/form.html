@@ -1,0 +1,12 @@
+{% extends "dashboard/base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block page %}
+<h1>{{ title }}</h1>
+<form method="post" class="card form-card">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="form">{{ form.as_div }}</div>
+  <button class="btn btn-primary" type="submit">{{ submit }}</button>
+  <a class="btn btn-ghost" href="javascript:history.back()">Cancel</a>
+</form>
+{% endblock %}

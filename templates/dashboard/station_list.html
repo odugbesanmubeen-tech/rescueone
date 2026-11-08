@@ -1,0 +1,18 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Stations{% endblock %}
+{% block page %}
+<div class="page-head"><h1>Emergency stations</h1>{% if request.user.is_admin_role %}<a class="btn btn-primary" href="{% url 'dashboard:station_create' %}">Add station</a>{% endif %}</div>
+<div class="table-wrap">
+{% if stations %}
+<table class="table">
+  <thead><tr><th>Name</th><th>Address</th><th>Phone</th><th>Coordinates</th><th>Responders</th><th>Vehicles</th><th>Active</th></tr></thead>
+  <tbody>
+  {% for s in stations %}
+    <tr><td>{{ s.name }}</td><td>{{ s.address|default:"—" }}</td><td>{{ s.phone|default:"—" }}</td>
+    <td>{% if s.has_location %}{{ s.latitude|floatformat:5 }}, {{ s.longitude|floatformat:5 }}{% else %}—{% endif %}</td><td>{{ s.responder_count }}</td><td>{{ s.vehicle_count }}</td><td>{{ s.is_active|yesno:"Yes,No" }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="empty">No stations yet.</p>{% endif %}
+</div>
+{% endblock %}

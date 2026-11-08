@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Sign in · Emergency Response{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">{% endblock %}
+{% block content %}
+<main class="login-wrap">
+  <form method="post" class="card login-card">
+    {% csrf_token %}
+    <h1>Operations sign in</h1>
+    <p class="muted">Dispatchers and administrators only.</p>
+    {{ form.non_field_errors }}
+    <div class="form">{{ form.as_div }}</div>
+    <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+  </form>
+</main>
+{% endblock %}

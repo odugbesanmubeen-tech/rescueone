@@ -1,0 +1,21 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Citizens{% endblock %}
+{% block page %}
+<h1>Citizens</h1>
+<form method="get" class="filters card"><input type="search" name="q" value="{{ q }}" placeholder="Search name, email, phone"><button class="btn btn-primary" type="submit">Search</button></form>
+<div class="table-wrap">
+{% if page %}
+<table class="table">
+  <thead><tr><th>Name</th><th>Phone</th><th>Joined</th><th>Incidents</th><th>Account</th></tr></thead>
+  <tbody>
+  {% for c in page %}
+    <tr><td>{{ c.display_name }}<br><span class="muted small">{{ c.email }}</span></td><td>{{ c.phone|default:"—" }}</td><td>{{ c.date_joined|date:"d M Y" }}</td><td>{{ c.incident_count }}</td>
+    <td>{% if request.user.is_admin_role %}<form method="post" action="{% url 'dashboard:user_toggle_active' c.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <button class="btn btn-small btn-ghost" type="submit">{% if c.is_active %}Deactivate{% else %}Activate{% endif %}</button></form>{% else %}{% if c.is_active %}Active{% else %}Deactivated{% endif %}{% endif %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="empty">No citizens have registered yet. Accounts appear here once the citizen app is live.</p>{% endif %}
+</div>
+{% include "dashboard/_pagination.html" %}
+{% endblock %}
