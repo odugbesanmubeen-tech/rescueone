@@ -1,21 +1,259 @@
 {% extends "dashboard/base.html" %}
 {% block title %}Analytics{% endblock %}
 {% block page %}
-<h1>Analytics</h1>
-<div class="stats">
-  <div class="stat"><span>{{ stats.total_incidents }}</span><label>Total incidents</label></div>
-  <div class="stat"><span>{{ stats.resolved_incidents }}</span><label>Resolved</label></div>
-  <div class="stat"><span>{% if avg_resolution is not None %}{{ avg_resolution }} min{% else %}—{% endif %}</span><label>Avg. time to resolve</label></div>
+<style>
+  .pl {
+    --pl-text: #f1eaf0; --pl-muted: #9a8f99; --pl-line: rgba(255,255,255,.08);
+    --pl-card: #0c0a0d; --pl-accent: #c48bb8; --pl-accent-hi: #e9b6dd; --pl-good: #5fd197;
+    --s1:#e6a8d7; --s2:#c48bb8; --s3:#9d7bd1; --s4:#7b8fe0; --s5:#5fb8a8; --s6:#5fd197; --s7:#8a8190; --s8:#5e5865;
+    --c1:#e6708a; --c2:#e9a35f; --c3:#7b8fe0; --c4:#c48bb8; --c5:#8a8190;
+    color: var(--pl-text);
+  }
+  .pl-head { margin-bottom: 1.25rem; }
+  .pl-head h1 { margin: 0 0 .2rem; font-size: 1.9rem; font-weight: 500; }
+  .pl-head p { margin: 0; color: var(--pl-muted); font-size: .85rem; }
+
+  .pl-card { position: relative; overflow: hidden; padding: 1.25rem 1.35rem; border-radius: 22px;
+             border: 1px solid var(--pl-line); background: var(--pl-card); }
+  .pl-card.glow::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+             background: radial-gradient(120% 90% at 0% 0%, rgba(196,139,184,.38), rgba(196,139,184,0) 60%); }
+  .pl-card > * { position: relative; }
+  .pl-card h2 { margin: 0; font-size: 1.05rem; font-weight: 500; }
+  .pl-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+
+  /* Pills */
+  .pl-pills { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .pl-pill { font: inherit; font-size: .78rem; color: var(--pl-text); background: transparent; cursor: pointer;
+             padding: .3rem .8rem; border-radius: 999px; border: 1px solid rgba(255,255,255,.45); }
+  .pl-pill:hover { border-color: var(--pl-accent-hi); }
+  .pl-pill:focus-visible { outline: 2px solid var(--pl-accent-hi); outline-offset: 2px; }
+  .pl-pill[aria-pressed="true"] { background: linear-gradient(135deg, #a67a9d, #5a3f56); border-color: transparent; }
+  .pl-tag { font-size: .78rem; padding: .3rem .8rem; border-radius: 999px; border: 1px solid rgba(255,255,255,.3); color: var(--pl-muted); }
+
+  /* Layout */
+  .pl-top { display: grid; grid-template-columns: 1fr 1.15fr 1.15fr; gap: 1rem; margin-bottom: 1rem; }
+  .pl-stack { display: grid; gap: 1rem; grid-template-rows: auto 1fr; }
+
+  /* Big number */
+  .pl-big { font-size: 2.6rem; font-weight: 600; line-height: 1; margin: .5rem 0 0; letter-spacing: -.01em; }
+  .pl-sub { color: var(--pl-muted); font-size: .8rem; margin-top: .5rem; }
+
+  /* Resolution card */
+  .pl-res { display: flex; align-items: center; gap: 1.1rem; }
+  .pl-ring { width: 84px; height: 84px; flex: none; }
+  .pl-ring circle { fill: none; stroke-width: 8; }
+  .pl-ring .track { stroke: rgba(255,255,255,.1); }
+  .pl-ring .val { stroke: var(--pl-good); stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; }
+  .pl-ring text { fill: var(--pl-text); font-size: 17px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+  .pl-facts { display: grid; gap: .65rem; }
+  .pl-facts b { display: block; font-size: 1.15rem; font-weight: 600; }
+  .pl-facts span { font-size: .78rem; color: var(--pl-muted); }
+
+  /* Segmented strip */
+  .pl-strip { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,.07); margin-bottom: .9rem; }
+  .pl-strip i { display: block; flex-basis: 0; min-width: 0; }
+  .pl-strip i + i { border-left: 2px solid var(--pl-card); }
+
+  /* Status list */
+  .pl-list { list-style: none; margin: 0; padding: 0; }
+  .pl-list li { display: flex; align-items: center; gap: .7rem; padding: .62rem 0; border-top: 1px solid var(--pl-line); font-size: .9rem; }
+  .pl-list li:first-child { border-top: 0; }
+  .pl-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .pl-list .n { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pl-list .is-zero { color: var(--pl-muted); }
+  .pl-list .is-zero .n { font-weight: 400; }
+  .pl-list .is-zero .pl-dot { opacity: .35; }
+  .pl-list.only-active .is-zero { display: none; }
+
+  /* Category tiles */
+  .pl-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+  .pl-tile { padding: .9rem; border-radius: 16px; border: 1px solid var(--pl-line); background: rgba(255,255,255,.025); }
+  .pl-tile b { display: block; font-size: 1.5rem; font-weight: 600; line-height: 1.1; }
+  .pl-tile span { display: flex; align-items: center; gap: .45rem; margin-top: .55rem; font-size: .78rem; color: var(--pl-muted); }
+  .pl-tile.is-zero b { color: var(--pl-muted); font-weight: 400; }
+  .pl-tile.is-zero .pl-dot { opacity: .35; }
+
+  /* Chart */
+  .pl-chart { position: relative; width: 100%; height: 270px; }
+  .pl-chart svg { display: block; width: 100%; height: 100%; touch-action: pan-y; }
+  .pl-chart .grid { stroke: rgba(255,255,255,.06); }
+  .pl-chart .ax { fill: var(--pl-muted); font-size: 11px; }
+  .pl-chart .line { fill: none; stroke: var(--pl-accent-hi); stroke-width: 2.25; stroke-linejoin: round; }
+  .pl-chart .guide { stroke: rgba(255,255,255,.55); stroke-dasharray: 4 4; }
+  .pl-chart .pt { fill: #f6d3ee; stroke: rgba(233,182,221,.35); stroke-width: 8; }
+  .pl-tip { position: absolute; top: 0; left: 0; pointer-events: none; padding: .55rem .8rem; border-radius: 12px;
+            background: #1a161b; border: 1px solid var(--pl-line); font-size: .78rem; white-space: nowrap; transform: translate(-50%, 0); }
+  .pl-tip b { display: block; font-size: 1.05rem; margin-top: .15rem; }
+  .pl-tip small { color: var(--pl-muted); font-weight: 400; font-size: .75rem; }
+
+  @media (max-width: 1000px) { .pl-top { grid-template-columns: 1fr; } .pl-stack { grid-template-rows: auto; } }
+</style>
+
+<div class="pl" id="pl"
+     data-total="{{ stats.total_incidents }}" data-resolved="{{ stats.resolved_incidents }}">
+
+  <header class="pl-head">
+    <h1>Analytics</h1>
+    <p>How incidents are coming in and moving through dispatch</p>
+  </header>
+
+  <div class="pl-top">
+    <div class="pl-stack">
+      <section class="pl-card glow">
+        <div class="pl-row" style="margin-bottom:0"><h2>Total incidents</h2><span class="pl-tag">All time</span></div>
+        <p class="pl-big">{{ stats.total_incidents }}</p>
+        <p class="pl-sub">Reported across all categories</p>
+      </section>
+
+      <section class="pl-card">
+        <h2 style="margin-bottom:1rem">Resolution</h2>
+        <div class="pl-res">
+          <svg class="pl-ring" viewBox="0 0 84 84" aria-hidden="true">
+            <circle class="track" cx="42" cy="42" r="34"></circle>
+            <circle class="val" id="plRing" cx="42" cy="42" r="34" stroke-dasharray="0 213.6"></circle>
+            <text x="42" y="42" id="plRate">—</text>
+          </svg>
+          <div class="pl-facts">
+            <div><b>{{ stats.resolved_incidents }}</b><span>Resolved</span></div>
+            <div><b>{% if avg_resolution is not None %}{{ avg_resolution }} min{% else %}—{% endif %}</b><span>Average time to resolve</span></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="pl-card">
+      <div class="pl-row">
+        <h2>By status</h2>
+        <div class="pl-pills" role="group" aria-label="Status filter">
+          <button type="button" class="pl-pill" data-filter="all" aria-pressed="true">All</button>
+          <button type="button" class="pl-pill" data-filter="active" aria-pressed="false">With incidents</button>
+        </div>
+      </div>
+      {% if stats.total_incidents %}
+      <div class="pl-strip" role="img" aria-label="Incidents by status">
+        {% for label, n in by_status %}<i style="flex-grow:{{ n }};background:var(--s{{ forloop.counter }})" title="{{ label }}: {{ n }}"></i>{% endfor %}
+      </div>
+      {% endif %}
+      <ul class="pl-list" id="plStatus">
+        {% for label, n in by_status %}
+        <li class="{% if n == 0 %}is-zero{% endif %}"><span class="pl-dot" style="background:var(--s{{ forloop.counter }})"></span>{{ label }}<span class="n">{{ n }}</span></li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="pl-card">
+      <div class="pl-row"><h2>By category</h2></div>
+      {% if stats.total_incidents %}
+      <div class="pl-strip" role="img" aria-label="Incidents by category">
+        {% for label, n in by_category %}<i style="flex-grow:{{ n }};background:var(--c{{ forloop.counter }})" title="{{ label }}: {{ n }}"></i>{% endfor %}
+      </div>
+      {% endif %}
+      <div class="pl-tiles">
+        {% for label, n in by_category %}
+        <div class="pl-tile {% if n == 0 %}is-zero{% endif %}"><b>{{ n }}</b><span><i class="pl-dot" style="background:var(--c{{ forloop.counter }})"></i>{{ label }}</span></div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <section class="pl-card">
+    <div class="pl-row">
+      <h2>Incidents per day</h2>
+      <div class="pl-pills" role="group" aria-label="Chart range">
+        <button type="button" class="pl-pill" data-range="7" aria-pressed="false">7D</button>
+        <button type="button" class="pl-pill" data-range="14" aria-pressed="true">14D</button>
+      </div>
+    </div>
+    <div class="pl-chart" id="plChart"></div>
+  </section>
 </div>
-<div class="grid-2">
-  <section class="card"><h2>By status</h2>
-    <table class="table"><tbody>{% for label, n in by_status %}<tr><td>{{ label }}</td><td>{{ n }}</td></tr>{% endfor %}</tbody></table></section>
-  <section class="card"><h2>By category</h2>
-    <table class="table"><tbody>{% for label, n in by_category %}<tr><td>{{ label }}</td><td>{{ n }}</td></tr>{% endfor %}</tbody></table></section>
-</div>
-<section class="card"><h2>Incidents per day (last 14 days)</h2>
-  {% for day, n, pct in daily %}
-  <div class="bar-row"><span class="bar-label">{{ day|date:"d M" }}</span><div class="bar"><div style="width: {{ pct }}%"></div></div><span class="bar-n">{{ n }}</span></div>
-  {% endfor %}
-</section>
+
+<script>
+(function () {
+  var root = document.getElementById('pl');
+  var all = [{% for day, n, pct in daily %}{d: "{{ day|date:'d M' }}", n: {{ n }}}{% if not forloop.last %},{% endif %}{% endfor %}];
+  var range = 14, hover = null;
+
+  /* Resolution ring */
+  var total = +root.dataset.total, resolved = +root.dataset.resolved;
+  if (total > 0) {
+    var rate = Math.round(resolved / total * 100), C = 213.6;
+    document.getElementById('plRing').setAttribute('stroke-dasharray', (C * rate / 100) + ' ' + C);
+    document.getElementById('plRate').textContent = rate + '%';
+  }
+
+  /* Status filter */
+  var list = document.getElementById('plStatus');
+  root.querySelectorAll('[data-filter]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      root.querySelectorAll('[data-filter]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      list.classList.toggle('only-active', b.dataset.filter === 'active');
+    });
+  });
+
+  /* Chart */
+  var wrap = document.getElementById('plChart');
+  function smooth(pts, y0, y1) {
+    var d = 'M' + pts[0][0] + ',' + pts[0][1];
+    for (var i = 0; i < pts.length - 1; i++) {
+      var p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+      var c1y = Math.min(y1, Math.max(y0, p1[1] + (p2[1] - p0[1]) / 6));
+      var c2y = Math.min(y1, Math.max(y0, p2[1] - (p3[1] - p1[1]) / 6));
+      d += ' C' + (p1[0] + (p2[0] - p0[0]) / 6) + ',' + c1y + ' ' + (p2[0] - (p3[0] - p1[0]) / 6) + ',' + c2y + ' ' + p2[0] + ',' + p2[1];
+    }
+    return d;
+  }
+  function draw() {
+    var data = all.slice(-range); if (!data.length) { wrap.innerHTML = ''; return; }
+    var W = wrap.clientWidth, H = wrap.clientHeight, L = 34, R = 14, T = 14, B = 28;
+    var pw = W - L - R, ph = H - T - B, len = data.length;
+    var max = Math.max.apply(null, data.map(function (d) { return d.n; }));
+    var top = Math.max(4, Math.ceil(max / 4) * 4);
+    function X(i) { return L + (len === 1 ? pw / 2 : i * pw / (len - 1)); }
+    function Y(v) { return T + ph - v / top * ph; }
+    var pts = data.map(function (d, i) { return [X(i), Y(d.n)]; });
+    var line = smooth(pts, T, T + ph);
+    var area = line + ' L' + X(len - 1) + ',' + (T + ph) + ' L' + X(0) + ',' + (T + ph) + ' Z';
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Incidents per day"><defs><linearGradient id="plFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c48bb8" stop-opacity=".5"/><stop offset="1" stop-color="#c48bb8" stop-opacity="0"/></linearGradient></defs>';
+    for (var g = 0; g <= 4; g++) {
+      var v = top / 4 * g, y = Y(v);
+      s += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '"/><text class="ax" x="' + (L - 8) + '" y="' + (y + 4) + '" text-anchor="end">' + v + '</text>';
+    }
+    var every = pw / len > 46 ? 1 : 2;
+    data.forEach(function (d, i) { if (i % every === (len - 1) % every) s += '<text class="ax" x="' + X(i) + '" y="' + (H - 6) + '" text-anchor="middle">' + d.d + '</text>'; });
+    s += '<path d="' + area + '" fill="url(#plFill)"/><path class="line" d="' + line + '"/>';
+    s += '<line class="guide" id="plGuide" y1="' + T + '" y2="' + (T + ph) + '"/><circle class="pt" id="plPt" r="5"/></svg>';
+    s += '<div class="pl-tip" id="plTip"></div>';
+    wrap.innerHTML = s;
+
+    var guide = document.getElementById('plGuide'), pt = document.getElementById('plPt'), tip = document.getElementById('plTip');
+    function show(i) {
+      var x = X(i), y = Y(data[i].n);
+      guide.setAttribute('x1', x); guide.setAttribute('x2', x);
+      pt.setAttribute('cx', x); pt.setAttribute('cy', y);
+      tip.innerHTML = data[i].d + '<b>' + data[i].n + ' <small>incident' + (data[i].n === 1 ? '' : 's') + '</small></b>';
+      var half = tip.offsetWidth / 2;
+      tip.style.left = Math.min(W - half, Math.max(half, x)) + 'px';
+    }
+    function nearest(e) {
+      var r = wrap.getBoundingClientRect(), x = e.clientX - r.left;
+      return Math.max(0, Math.min(len - 1, Math.round((x - L) / (pw / Math.max(1, len - 1)))));
+    }
+    var current = hover !== null && hover < len ? hover : len - 1;
+    show(current);
+    wrap.onpointermove = function (e) { hover = nearest(e); show(hover); };
+    wrap.onpointerleave = function () { hover = null; show(len - 1); };
+  }
+
+  root.querySelectorAll('[data-range]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      range = +b.dataset.range; hover = null;
+      root.querySelectorAll('[data-range]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      draw();
+    });
+  });
+  var t; window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(draw, 120); });
+  draw();
+})();
+</script>
 {% endblock %}

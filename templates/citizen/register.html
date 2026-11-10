@@ -1,0 +1,12 @@
+{% extends "citizen/base.html" %}
+{% block title %}Create account · Emergency Help{% endblock %}
+{% block content %}
+<h1>Create your account</h1>
+<form method="post" class="panel">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="fields">{{ form.as_div }}</div>
+  <button class="btn btn-primary btn-block" type="submit">Create account</button>
+</form>
+<p class="center">Already registered? <a href="{% url 'citizens:login' %}">Sign in</a></p>
+{% endblock %}

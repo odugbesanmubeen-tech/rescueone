@@ -1,0 +1,47 @@
+{% extends "citizen/base.html" %}
+{% load static %}
+{% block content %}
+{% if active %}
+<a class="panel active-card" href="{% url 'citizens:incident_detail' active.pk %}">
+  <strong>You have an active request</strong><br>
+  #{{ active.pk }} · {{ active.get_category_display }} · <span class="badge badge-{{ active.status|lower }}">{{ active.get_status_display }}</span>
+  <div class="muted small">Tap to track it</div>
+</a>
+{% endif %}
+
+<section class="sos-wrap">
+  <button id="sos-btn" class="sos" type="button">SOS</button>
+  <p class="muted center">Press and confirm to send an emergency alert with your location.</p>
+  <p class="center"><a href="{% url 'citizens:report' %}">Report with details, photos or voice</a></p>
+</section>
+
+<dialog id="sos-dialog" class="dialog">
+  <h2>Send emergency alert?</h2>
+  <label for="sos-category">Type of emergency</label>
+  <select id="sos-category">
+    <option value="OTHER">Not sure / other</option>
+    {% for v, l in categories %}{% if v != "OTHER" %}<option value="{{ v }}">{{ l }}</option>{% endif %}{% endfor %}
+  </select>
+  <p id="sos-status" class="muted small"></p>
+  <label for="sos-address">Address or landmark <span class="muted">(needed if location is unavailable)</span></label>
+  <input id="sos-address" type="text" maxlength="255" autocomplete="street-address">
+  <p id="sos-error" class="error" hidden></p>
+  <div class="row">
+    <button id="sos-cancel" class="btn" type="button">Cancel</button>
+    <button id="sos-send" class="btn btn-primary" type="button">Send alert</button>
+  </div>
+</dialog>
+
+{% if recent %}
+<h2>Recent requests</h2>
+<ul class="list">
+{% for i in recent %}
+  <li><a href="{% url 'citizens:incident_detail' i.pk %}">#{{ i.pk }} · {{ i.get_category_display }}</a>
+    <span class="badge badge-{{ i.status|lower }}">{{ i.get_status_display }}</span>
+    <div class="muted small">{{ i.created_at|date:"d M Y H:i" }}</div></li>
+{% endfor %}
+</ul>
+{% endif %}
+<p class="muted small center">This app needs an internet connection to send requests. If you are offline, call your local emergency number.</p>
+{% endblock %}
+{% block extra_js %}<script src="{% static 'js/sos.js' %}"></script>{% endblock %}

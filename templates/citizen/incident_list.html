@@ -1,0 +1,19 @@
+{% extends "citizen/base.html" %}
+{% block title %}My requests{% endblock %}
+{% block content %}
+<h1>My requests</h1>
+{% if page %}
+<ul class="list">
+{% for i in page %}
+  <li><a href="{% url 'citizens:incident_detail' i.pk %}">#{{ i.pk }} · {{ i.get_category_display }}</a>
+    <span class="badge badge-{{ i.status|lower }}">{{ i.get_status_display }}</span>
+    <div class="muted small">{{ i.created_at|date:"d M Y H:i" }}</div></li>
+{% endfor %}
+</ul>
+{% if page.paginator.num_pages > 1 %}
+<p class="center">{% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">← Newer</a>{% endif %}
+ Page {{ page.number }} of {{ page.paginator.num_pages }}
+ {% if page.has_next %}<a href="?page={{ page.next_page_number }}">Older →</a>{% endif %}</p>
+{% endif %}
+{% else %}<p class="empty">You have not sent any requests yet.</p>{% endif %}
+{% endblock %}

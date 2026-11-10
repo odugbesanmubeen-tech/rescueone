@@ -23,3 +23,9 @@ Sign in at http://127.0.0.1:8000/login/
 
 Switch DATABASES to PostgreSQL (optionally with PostGIS) and set REDIS_URL so
 WebSockets and the cache are shared between workers.
+
+## Citizen app (installable PWA)
+
+Open http://127.0.0.1:8000/app/ and register a citizen account.
+Browsers allow location access only on HTTPS or localhost, so testing on a phone
+over your Wi-Fi needs an HTTPS tunnel (for example cloudflared or ngrok).

@@ -1,0 +1,32 @@
+{% extends "citizen/base.html" %}
+{% load static %}
+{% block title %}Report an emergency{% endblock %}
+{% block content %}
+<h1>Report an emergency</h1>
+<form id="report-form" class="panel" enctype="multipart/form-data">
+  <label for="category">What is happening?</label>
+  <select id="category" name="category" required>
+    {% for v, l in categories %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
+  </select>
+
+  <label for="description">Describe the situation</label>
+  <textarea id="description" name="description" rows="4" maxlength="2000"></textarea>
+
+  <label>Your location</label>
+  <button id="gps-btn" class="btn" type="button">Use my current location</button>
+  <p id="gps-status" class="muted small">Not captured yet. Your browser will ask permission.</p>
+  <label for="address_text">Address or landmark <span class="muted">(required if location is not captured)</span></label>
+  <input id="address_text" name="address_text" type="text" maxlength="255">
+
+  <label for="media">Photos or video <span class="muted">(up to 5 files)</span></label>
+  <input id="media" name="media" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple>
+
+  <label>Voice note <span class="muted">(optional)</span></label>
+  <button id="rec-btn" class="btn" type="button">Record voice note</button>
+  <p id="rec-status" class="muted small"></p>
+
+  <p id="report-error" class="error" hidden></p>
+  <button id="report-submit" class="btn btn-primary btn-block" type="submit">Send emergency report</button>
+</form>
+{% endblock %}
+{% block extra_js %}<script src="{% static 'js/report.js' %}"></script>{% endblock %}

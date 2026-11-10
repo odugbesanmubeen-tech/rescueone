@@ -1,0 +1,12 @@
+{% extends "citizen/base.html" %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+<h1>Your profile</h1>
+<p class="muted">{{ request.user.email }}</p>
+<form method="post" class="panel">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="fields">{{ form.as_div }}</div>
+  <button class="btn btn-primary btn-block" type="submit">Save profile</button>
+</form>
+{% endblock %}

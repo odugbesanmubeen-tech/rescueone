@@ -1,16 +1,46 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Sign in · Emergency Response{% endblock %}
-{% block extra_head %}<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/login.css' %}">{% endblock %}
 {% block content %}
-<main class="login-wrap">
-  <form method="post" class="card login-card">
-    {% csrf_token %}
-    <h1>Operations sign in</h1>
-    <p class="muted">Dispatchers and administrators only.</p>
-    {{ form.non_field_errors }}
-    <div class="form">{{ form.as_div }}</div>
-    <button type="submit" class="btn btn-primary btn-block">Sign in</button>
-  </form>
+<main class="auth" style="--auth-img: url('{% static 'images/man.png' %}'); --side-img: url('{% static 'images/man.png' %}');">
+  <video class="auth-video" autoplay muted loop playsinline preload="auto"
+         poster="{% static 'images/login-bg.jpg' %}" aria-hidden="true">
+    <source src="{% static 'videos/login-bg.mp4' %}" type="video/mp4">
+  </video>
+
+  <section class="auth-panel">
+    <header class="auth-top">
+      <span class="auth-brand">Rescue one</span>
+      <span class="auth-tag">Operations sign in</span>
+    </header>
+
+    <div class="auth-body">
+      <div class="auth-visual" role="img" aria-label="Firefighter at the scene of a fire"></div>
+
+      <form method="post" class="auth-form" novalidate>
+        {% csrf_token %}
+        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+        <h1>Hello!<br>Welcome Back</h1>
+
+        {% if form.non_field_errors %}<div class="auth-error">{{ form.non_field_errors }}</div>{% endif %}
+
+        <label class="sr-only" for="{{ form.username.id_for_label }}">Email</label>
+        {{ form.username }}
+        {% if form.username.errors %}<div class="auth-error">{{ form.username.errors }}</div>{% endif %}
+
+        <label class="sr-only" for="{{ form.password.id_for_label }}">Password</label>
+        <div class="field-pw">
+          {{ form.password }}
+          <button type="button" id="pw-toggle" class="pw-toggle" aria-label="Show or hide password">Show</button>
+        </div>
+        {% if form.password.errors %}<div class="auth-error">{{ form.password.errors }}</div>{% endif %}
+
+        <button type="submit" class="auth-btn">Sign in</button>
+        <p class="auth-note">Dispatchers and administrators only.</p>
+      </form>
+    </div>
+  </section>
 </main>
 {% endblock %}
+{% block extra_js %}<script src="{% static 'js/login.js' %}"></script>{% endblock %}

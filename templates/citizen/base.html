@@ -1,0 +1,36 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#d62828">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{% block title %}Emergency Help{% endblock %}</title>
+  <link rel="manifest" href="{% url 'citizens:manifest' %}">
+  <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}">
+  <link rel="stylesheet" href="{% static 'css/citizen.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body data-sos-url="{% url 'citizens:sos_api' %}">
+  <header class="topbar">
+    <a class="logo" href="{% url 'citizens:home' %}">Emergency Help</a>
+    {% if request.user.is_authenticated %}
+    <form method="post" action="{% url 'citizens:logout' %}">{% csrf_token %}<button class="link-btn" type="submit">Sign out</button></form>
+    {% endif %}
+  </header>
+  <main class="screen">
+    {% for m in messages %}<div class="note note-{{ m.tags }}">{{ m }}</div>{% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+  {% if request.user.is_authenticated %}
+  <nav class="tabbar">
+    <a href="{% url 'citizens:home' %}">Home</a>
+    <a href="{% url 'citizens:incident_list' %}">History</a>
+    <a href="{% url 'citizens:notification_list' %}">Alerts{% if unread_notifications %} <span class="dot">{{ unread_notifications }}</span>{% endif %}</a>
+    <a href="{% url 'citizens:profile' %}">Profile</a>
+  </nav>
+  {% endif %}
+  <script src="{% static 'js/citizen.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

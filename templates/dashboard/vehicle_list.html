@@ -1,13 +1,178 @@
 {% extends "dashboard/base.html" %}
 {% block title %}Vehicles{% endblock %}
 {% block page %}
-<div class="page-head"><h1>Vehicles</h1>{% if request.user.is_admin_role %}<a class="btn btn-primary" href="{% url 'dashboard:vehicle_create' %}">Add vehicle</a>{% endif %}</div>
-<div class="table-wrap">
-{% if vehicles %}
-<table class="table">
-  <thead><tr><th>Number</th><th>Type</th><th>Station</th><th>Available</th></tr></thead>
-  <tbody>{% for v in vehicles %}<tr><td>{{ v.number }}</td><td>{{ v.get_vehicle_type_display }}</td><td>{{ v.station|default:"—" }}</td><td>{{ v.is_available|yesno:"Yes,No" }}</td></tr>{% endfor %}</tbody>
-</table>
-{% else %}<p class="empty">No vehicles yet.</p>{% endif %}
+<style>
+  .vh { --vh-text: #e9f1f2; --vh-muted: #7f949a; --vh-line: rgba(255,255,255,.07); --vh-teal: #2bb9ad;
+        --vh-good: #3fd682; color: var(--vh-text); }
+
+  /* Header */
+  .vh-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .vh-head h1 { margin: 0; font-size: 1.6rem; font-weight: 600; }
+  .vh-actions { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+  .vh-tabs { display: flex; gap: .25rem; padding: .3rem; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid var(--vh-line); }
+  .vh-tab { font: inherit; font-size: .82rem; color: var(--vh-muted); background: transparent; border: 0; cursor: pointer;
+            padding: .4rem .9rem; border-radius: 9px; }
+  .vh-tab:hover { color: var(--vh-text); }
+  .vh-tab:focus-visible { outline: 2px solid var(--vh-teal); outline-offset: 2px; }
+  .vh-tab[aria-pressed="true"] { color: #04201f; font-weight: 600; background: linear-gradient(135deg, #46d3c6, #1f9d95); }
+  .vh-add { display: inline-block; text-decoration: none; font-size: .85rem; font-weight: 600; color: #04201f;
+            padding: .55rem 1.1rem; border-radius: 10px; background: linear-gradient(135deg, #46d3c6, #1f9d95); }
+  .vh-add:hover { filter: brightness(1.08); }
+  .vh-add:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+  /* Stat cards */
+  .vh-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.25rem; }
+  .vh-stat { padding: .95rem 1.1rem 1rem; border-radius: 16px; border: 1px solid rgba(255,255,255,.22);
+             box-shadow: inset 0 1px 0 rgba(255,255,255,.18); }
+  .vh-stat.teal    { background: linear-gradient(135deg, #1fa39a, #0e5a60); }
+  .vh-stat.indigo  { background: linear-gradient(135deg, #3b21b8, #1b1070); }
+  .vh-stat.orange  { background: linear-gradient(135deg, #c4571f, #752d10); }
+  .vh-stat.magenta { background: linear-gradient(135deg, #c0268f, #6b1352); }
+  .vh-stat-top { display: flex; align-items: center; gap: .65rem; padding-bottom: .7rem; margin-bottom: .7rem;
+                 border-bottom: 1px solid rgba(255,255,255,.2); font-size: .9rem; }
+  .vh-ico { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,.2); display: grid; place-items: center; flex: none; }
+  .vh-ico svg { width: 16px; height: 16px; fill: none; stroke: #fff; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .vh-stat-bot { display: flex; align-items: flex-end; justify-content: space-between; gap: .5rem; }
+  .vh-stat b { font-size: 1.9rem; font-weight: 600; line-height: 1; }
+  .vh-stat small { font-size: .75rem; text-align: right; color: rgba(255,255,255,.82); }
+
+  /* Table card */
+  .vh-card { border-radius: 18px; border: 1px solid var(--vh-line); overflow: hidden;
+             background: linear-gradient(180deg, rgba(22,64,74,.32), rgba(7,15,20,.92) 40%); }
+  .vh-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; flex-wrap: wrap; }
+  .vh-bar h2 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+  .vh-search { position: relative; }
+  .vh-search svg { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); width: 15px; height: 15px;
+                   fill: none; stroke: var(--vh-muted); stroke-width: 2; stroke-linecap: round; }
+  .vh-search input { font: inherit; font-size: .85rem; color: var(--vh-text); width: 240px; max-width: 100%;
+                     padding: .55rem .9rem .55rem 2.1rem; border-radius: 10px; border: 1px solid var(--vh-line);
+                     background: rgba(255,255,255,.04); }
+  .vh-search input::placeholder { color: var(--vh-muted); }
+  .vh-search input:focus-visible { outline: 2px solid var(--vh-teal); outline-offset: 1px; }
+
+  .vh-scroll { overflow-x: auto; }
+  .vh-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  .vh-table th { text-align: left; font-weight: 400; color: var(--vh-muted); padding: .85rem 1.25rem; background: rgba(255,255,255,.035); white-space: nowrap; }
+  .vh-table td { padding: .95rem 1.25rem; border-top: 1px solid var(--vh-line); color: #c9d6d9; white-space: nowrap; }
+  .vh-table td.num { color: var(--vh-text); font-weight: 600; }
+  .vh-table tbody tr:hover td { background: rgba(43,185,173,.06); }
+  .vh-table td.none { color: var(--vh-muted); }
+
+  .vh-pill { display: inline-flex; align-items: center; gap: .45rem; font-size: .78rem; padding: .22rem .85rem; border-radius: 999px; border: 1px solid; }
+  .vh-pill i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .vh-pill.yes { color: var(--vh-good); border-color: rgba(63,214,130,.65); background: rgba(63,214,130,.08); }
+  .vh-pill.no  { color: #93a4a9; border-color: rgba(147,164,169,.4); background: rgba(255,255,255,.04); }
+
+  .vh-empty { padding: 2.5rem 1.25rem; text-align: center; color: var(--vh-muted); }
+  .vh-empty a { color: var(--vh-teal); }
+  .vh-nomatch { display: none; }
+
+  @media (max-width: 1000px) { .vh-stats { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px)  { .vh-stats { grid-template-columns: 1fr; } .vh-search input { width: 100%; } .vh-search { width: 100%; } }
+</style>
+
+<div class="vh" id="vh">
+  <div class="vh-head">
+    <h1>Vehicles</h1>
+    <div class="vh-actions">
+      <div class="vh-tabs" role="group" aria-label="Filter vehicles">
+        <button type="button" class="vh-tab" data-filter="all" aria-pressed="true">All</button>
+        <button type="button" class="vh-tab" data-filter="yes" aria-pressed="false">Available</button>
+        <button type="button" class="vh-tab" data-filter="no" aria-pressed="false">Unavailable</button>
+      </div>
+      {% if request.user.is_admin_role %}<a class="vh-add" href="{% url 'dashboard:vehicle_create' %}">Add vehicle</a>{% endif %}
+    </div>
+  </div>
+
+  <div class="vh-stats">
+    <div class="vh-stat teal">
+      <div class="vh-stat-top"><span class="vh-ico"><svg viewBox="0 0 24 24"><path d="M3 6h11v10H3zM14 9h4l3 3v4h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg></span>Total vehicles</div>
+      <div class="vh-stat-bot"><b id="vhTotal">{{ vehicles|length }}</b><small>In your fleet</small></div>
+    </div>
+    <div class="vh-stat indigo">
+      <div class="vh-stat-top"><span class="vh-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16 9.5"/></svg></span>Available</div>
+      <div class="vh-stat-bot"><b id="vhAvail">—</b><small id="vhAvailPct">Ready to dispatch</small></div>
+    </div>
+    <div class="vh-stat orange">
+      <div class="vh-stat-top"><span class="vh-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></svg></span>Unavailable</div>
+      <div class="vh-stat-bot"><b id="vhUnavail">—</b><small id="vhUnavailPct">Out of service or busy</small></div>
+    </div>
+    <div class="vh-stat magenta">
+      <div class="vh-stat-top"><span class="vh-ico"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11.5a7 7 0 1 0-14 0C5 14.800 12 21 12 21z"/><circle cx="12" cy="9.500" r="2.500"/></svg></span>Stations covered</div>
+      <div class="vh-stat-bot"><b id="vhStations">—</b><small>With vehicles assigned</small></div>
+    </div>
+  </div>
+
+  <section class="vh-card">
+    {% if vehicles %}
+    <div class="vh-bar">
+      <h2>Fleet</h2>
+      <label class="vh-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.500-3.500"/></svg>
+        <input type="search" id="vhSearch" placeholder="Search number, type or station" aria-label="Search vehicles">
+      </label>
+    </div>
+    <div class="vh-scroll">
+      <table class="vh-table">
+        <thead><tr><th>Number</th><th>Type</th><th>Station</th><th>Status</th></tr></thead>
+        <tbody id="vhBody">
+          {% for v in vehicles %}
+          <tr data-status="{{ v.is_available|yesno:'yes,no' }}" data-station="{{ v.station|default:'' }}"
+              data-text="{{ v.number }} {{ v.get_vehicle_type_display }} {{ v.station|default:'' }}">
+            <td class="num">{{ v.number }}</td>
+            <td>{{ v.get_vehicle_type_display }}</td>
+            <td{% if not v.station %} class="none"{% endif %}>{{ v.station|default:"—" }}</td>
+            <td>{% if v.is_available %}<span class="vh-pill yes"><i></i>Available</span>{% else %}<span class="vh-pill no"><i></i>Unavailable</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+          <tr class="vh-nomatch" id="vhNone"><td colspan="4" class="vh-empty">No vehicles match your search or filter.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="vh-empty">No vehicles yet.{% if request.user.is_admin_role %} <a href="{% url 'dashboard:vehicle_create' %}">Add your first vehicle</a> so it can be assigned to incidents.{% endif %}</div>
+    {% endif %}
+  </section>
 </div>
+
+<script>
+(function () {
+  var body = document.getElementById('vhBody');
+  if (!body) { document.getElementById('vhAvail').textContent = '0'; document.getElementById('vhUnavail').textContent = '0'; document.getElementById('vhStations').textContent = '0'; return; }
+
+  var rows = Array.prototype.slice.call(body.querySelectorAll('tr[data-status]'));
+  var total = rows.length, avail = 0, stations = {};
+  rows.forEach(function (r) {
+    if (r.dataset.status === 'yes') avail++;
+    if (r.dataset.station) stations[r.dataset.station] = 1;
+  });
+  var unavail = total - avail;
+  function pct(n) { return total ? Math.round(n / total * 100) + '% of fleet' : ''; }
+  document.getElementById('vhAvail').textContent = avail;
+  document.getElementById('vhUnavail').textContent = unavail;
+  document.getElementById('vhStations').textContent = Object.keys(stations).length;
+  document.getElementById('vhAvailPct').textContent = pct(avail);
+  document.getElementById('vhUnavailPct').textContent = pct(unavail);
+
+  var filter = 'all', query = '';
+  var none = document.getElementById('vhNone'), search = document.getElementById('vhSearch');
+  function apply() {
+    var shown = 0;
+    rows.forEach(function (r) {
+      var ok = (filter === 'all' || r.dataset.status === filter) && r.dataset.text.toLowerCase().indexOf(query) !== -1;
+      r.style.display = ok ? '' : 'none';
+      if (ok) shown++;
+    });
+    none.style.display = shown ? 'none' : 'table-row';
+  }
+  document.querySelectorAll('#vh [data-filter]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      filter = b.dataset.filter;
+      document.querySelectorAll('#vh [data-filter]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      apply();
+    });
+  });
+  search.addEventListener('input', function () { query = search.value.trim().toLowerCase(); apply(); });
+})();
+</script>
 {% endblock %}

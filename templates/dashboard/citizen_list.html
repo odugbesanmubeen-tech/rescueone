@@ -1,21 +1,152 @@
 {% extends "dashboard/base.html" %}
 {% block title %}Citizens{% endblock %}
 {% block page %}
-<h1>Citizens</h1>
-<form method="get" class="filters card"><input type="search" name="q" value="{{ q }}" placeholder="Search name, email, phone"><button class="btn btn-primary" type="submit">Search</button></form>
-<div class="table-wrap">
-{% if page %}
-<table class="table">
-  <thead><tr><th>Name</th><th>Phone</th><th>Joined</th><th>Incidents</th><th>Account</th></tr></thead>
-  <tbody>
-  {% for c in page %}
-    <tr><td>{{ c.display_name }}<br><span class="muted small">{{ c.email }}</span></td><td>{{ c.phone|default:"—" }}</td><td>{{ c.date_joined|date:"d M Y" }}</td><td>{{ c.incident_count }}</td>
-    <td>{% if request.user.is_admin_role %}<form method="post" action="{% url 'dashboard:user_toggle_active' c.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
-      <button class="btn btn-small btn-ghost" type="submit">{% if c.is_active %}Deactivate{% else %}Activate{% endif %}</button></form>{% else %}{% if c.is_active %}Active{% else %}Deactivated{% endif %}{% endif %}</td></tr>
-  {% endfor %}
-  </tbody>
-</table>
-{% else %}<p class="empty">No citizens have registered yet. Accounts appear here once the citizen app is live.</p>{% endif %}
+<style>
+  .ct { --ct-card: #0e1a33; --ct-inset: #0a1226; --ct-line: rgba(255,255,255,.08); --ct-text: #eaf0ff; --ct-muted: #8b97b8;
+        --ct-red: #ef4b52; --ct-red-hi: #ff7b80; --ct-good: #3ddc97; color: var(--ct-text); }
+
+  .ct-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.1rem; }
+  .ct-bar h1 { margin: 0; font-size: 1.6rem; font-weight: 600; }
+  .ct-bar p { margin: .25rem 0 0; font-size: .85rem; color: var(--ct-muted); }
+  .ct-tools { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+
+  /* Outlined controls, like the Action / Add New buttons in the reference */
+  .ct-btn { display: inline-flex; align-items: center; gap: .5rem; font: inherit; font-size: .85rem; font-weight: 500; color: var(--ct-text); text-decoration: none; cursor: pointer;
+            padding: .6rem 1.1rem; border-radius: 10px; border: 1px solid rgba(255,255,255,.28); background: rgba(255,255,255,.03); }
+  .ct-btn:hover { border-color: var(--ct-red-hi); }
+  .ct-btn:focus-visible { outline: 2px solid var(--ct-red-hi); outline-offset: 2px; }
+  .ct-btn.solid { border-color: transparent; color: #fff; font-weight: 600; background: linear-gradient(135deg, #f25a5f, #b81f2b); }
+  .ct-btn.solid:hover { filter: brightness(1.08); }
+  .ct-btn.small { padding: .35rem .85rem; font-size: .78rem; border-radius: 8px; }
+
+  .ct-search { position: relative; }
+  .ct-search svg { position: absolute; left: .85rem; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; fill: none; stroke: var(--ct-muted); stroke-width: 2; stroke-linecap: round; }
+  .ct-search input { font: inherit; font-size: .86rem; color: var(--ct-text); width: 260px; max-width: 100%; padding: .6rem .9rem .6rem 2.3rem;
+                     border-radius: 10px; border: 1px solid var(--ct-line); background: var(--ct-inset); }
+  .ct-search input::placeholder { color: var(--ct-muted); }
+  .ct-search input:focus-visible { outline: 2px solid var(--ct-red); outline-offset: 1px; }
+  .ct-form { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin: 0; }
+
+  /* Filter chips */
+  .ct-chips { display: flex; gap: .4rem; }
+  .ct-chip { font: inherit; font-size: .8rem; color: var(--ct-muted); cursor: pointer; background: transparent; padding: .4rem .9rem; border-radius: 999px; border: 1px solid var(--ct-line); }
+  .ct-chip:hover { color: var(--ct-text); }
+  .ct-chip:focus-visible { outline: 2px solid var(--ct-red-hi); outline-offset: 2px; }
+  .ct-chip[aria-pressed="true"] { color: #fff; border-color: transparent; background: linear-gradient(135deg, #f25a5f, #b81f2b); }
+
+  /* Table card */
+  .ct-card { border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,.14);
+             background: linear-gradient(180deg, rgba(40,70,120,.28), var(--ct-card) 35%); }
+  .ct-scroll { overflow-x: auto; }
+  .ct-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  .ct-table thead th { text-align: left; font-weight: 500; color: #c9d3ee; padding: 1rem 1.1rem; background: rgba(255,255,255,.07); white-space: nowrap;
+                       border-bottom: 1px solid rgba(255,255,255,.1); }
+  .ct-table td { padding: .9rem 1.1rem; vertical-align: middle; white-space: nowrap; }
+  .ct-table tbody tr:nth-child(odd) td { background: rgba(255,255,255,.025); }
+  .ct-table tbody tr:hover td { background: rgba(239,75,82,.08); }
+
+  .ct-who { display: flex; align-items: center; gap: .85rem; }
+  .ct-av { width: 38px; height: 38px; border-radius: 10px; flex: none; display: grid; place-items: center; font-weight: 700; font-size: .95rem; color: #fff;
+           background: linear-gradient(135deg, #f25a5f, #7d1730); }
+  .ct-name { color: var(--ct-red-hi); font-weight: 600; line-height: 1.25; }
+  .ct-sub { display: block; font-size: .78rem; color: var(--ct-muted); font-weight: 400; margin-top: .1rem; }
+  .ct-two { line-height: 1.35; }
+  .ct-two span { display: block; font-size: .78rem; color: var(--ct-muted); }
+  .ct-none { color: var(--ct-muted); }
+  .ct-count { font-weight: 600; }
+  .ct-count.zero { color: var(--ct-muted); font-weight: 400; }
+
+  .ct-status { display: inline-flex; align-items: center; gap: .5rem; font-size: .85rem; }
+  .ct-status i { width: 8px; height: 8px; border-radius: 50%; background: var(--ct-good); }
+  .ct-status.off { color: var(--ct-muted); }
+  .ct-status.off i { background: #7d87a6; }
+  .ct-table form { margin: 0; }
+
+  .ct-empty { margin: 0; padding: 2.5rem 1.25rem; text-align: center; color: var(--ct-muted); }
+  .ct-empty a { color: var(--ct-red-hi); }
+  .ct-nomatch { display: none; }
+  .ct-nomatch td { text-align: center; color: var(--ct-muted); padding: 1.6rem; background: none !important; }
+  .ct-pager { padding: 1rem 0; }
+</style>
+
+<div class="ct">
+  <div class="ct-bar">
+    <div>
+      <h1>Citizens</h1>
+      <p>{% firstof page.paginator.count "0" %} registered{% if q %} matching “{{ q }}”{% endif %}</p>
+    </div>
+    <div class="ct-tools">
+      <div class="ct-chips" role="group" aria-label="Filter citizens on this page">
+        <button type="button" class="ct-chip" data-f="all" aria-pressed="true">All</button>
+        <button type="button" class="ct-chip" data-f="1" aria-pressed="false">Active</button>
+        <button type="button" class="ct-chip" data-f="0" aria-pressed="false">Deactivated</button>
+      </div>
+      <form method="get" class="ct-form">
+        <label class="ct-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.500-3.500"/></svg>
+          <input type="search" name="q" value="{{ q }}" placeholder="Search name, email, phone" aria-label="Search citizens">
+        </label>
+        <button class="ct-btn solid" type="submit">Search</button>
+        {% if q %}<a class="ct-btn" href="?">Clear</a>{% endif %}
+      </form>
+    </div>
+  </div>
+
+  <section class="ct-card">
+  {% if page %}
+    <div class="ct-scroll">
+    <table class="ct-table">
+      <thead><tr><th>Citizen</th><th>Phone</th><th>Joined</th><th>Incidents</th><th>Account</th>{% if request.user.is_admin_role %}<th></th>{% endif %}</tr></thead>
+      <tbody id="ctBody">
+      {% for c in page %}
+        <tr data-active="{{ c.is_active|yesno:'1,0' }}">
+          <td>
+            <div class="ct-who">
+              <span class="ct-av" aria-hidden="true">{{ c.display_name|slice:":1"|upper }}</span>
+              <div class="ct-name">{{ c.display_name }}<span class="ct-sub">{{ c.email }}</span></div>
+            </div>
+          </td>
+          <td>{% if c.phone %}{{ c.phone }}{% else %}<span class="ct-none">—</span>{% endif %}</td>
+          <td class="ct-two">{{ c.date_joined|date:"d M Y" }}<span>{{ c.date_joined|date:"H:i" }}</span></td>
+          <td><span class="ct-count {% if not c.incident_count %}zero{% endif %}">{{ c.incident_count }}</span></td>
+          <td>{% if c.is_active %}<span class="ct-status"><i></i>Active</span>{% else %}<span class="ct-status off"><i></i>Deactivated</span>{% endif %}</td>
+          {% if request.user.is_admin_role %}
+          <td>
+            <form method="post" action="{% url 'dashboard:user_toggle_active' c.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button class="ct-btn small" type="submit">{% if c.is_active %}Deactivate{% else %}Activate{% endif %}</button></form>
+          </td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+        <tr class="ct-nomatch" id="ctNone"><td colspan="6">No citizens on this page match that filter.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  {% else %}
+    <p class="ct-empty">{% if q %}No citizens match your search. <a href="?">Clear the search</a> to see everyone.{% else %}No citizens have registered yet. Accounts appear here once the citizen app is live.{% endif %}</p>
+  {% endif %}
+  </section>
+
+  <div class="ct-pager">{% include "dashboard/_pagination.html" %}</div>
 </div>
-{% include "dashboard/_pagination.html" %}
+
+<script>
+(function () {
+  var rows = Array.prototype.slice.call(document.querySelectorAll('#ctBody tr[data-active]'));
+  var none = document.getElementById('ctNone');
+  var chips = document.querySelectorAll('.ct-chip');
+  chips.forEach(function (b) {
+    b.addEventListener('click', function () {
+      chips.forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      var f = b.dataset.f, shown = 0;
+      rows.forEach(function (r) {
+        var ok = f === 'all' || r.dataset.active === f;
+        r.style.display = ok ? '' : 'none';
+        if (ok) shown++;
+      });
+      if (none) none.style.display = shown ? 'none' : 'table-row';
+    });
+  });
+})();
+</script>
 {% endblock %}

@@ -1,0 +1,44 @@
+{% extends "citizen/base.html" %}
+{% load static %}
+{% block title %}Request #{{ incident.pk }}{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">{% endblock %}
+{% block content %}
+<div id="track" data-url="{% url 'citizens:incident_status_api' incident.pk %}">
+  <h1>Request #{{ incident.pk }}</h1>
+  <p><span id="track-status" class="badge badge-{{ incident.status|lower }}">{{ incident.get_status_display }}</span>
+     · {{ incident.get_category_display }} · {{ incident.created_at|date:"d M Y H:i" }}</p>
+  <div id="track-info" class="panel"></div>
+
+  {% if incident.latitude is not None %}<div id="map" class="map"></div>{% endif %}
+
+  <div class="panel">
+    <h2>Details</h2>
+    <p>{{ incident.description|default:"No description."|linebreaksbr }}</p>
+    {% if incident.address_text %}<p><strong>Address:</strong> {{ incident.address_text }}</p>{% endif %}
+    {% if incident.has_location %}<p class="muted small">Location sent: {{ incident.location_captured_at|date:"H:i" }}{% if incident.location_accuracy_m %} · accurate to about {{ incident.location_accuracy_m|floatformat:0 }} m{% endif %}</p>{% endif %}
+    {% if media %}
+      <h3>Attachments</h3>
+      <ul>{% for m in media %}<li><a href="{% url 'incidents:media' m.pk %}" target="_blank" rel="noopener">{{ m.get_media_type_display }}</a></li>{% endfor %}</ul>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>Timeline</h2>
+    <ul class="timeline">
+    {% for h in history %}<li><strong>{{ h.get_to_status_display }}</strong> · {{ h.created_at|date:"d M H:i" }}</li>{% endfor %}
+    </ul>
+  </div>
+
+  <div id="cancel-box" {% if not can_cancel %}hidden{% endif %}>
+    <form method="post" action="{% url 'citizens:incident_cancel' incident.pk %}" onsubmit="return confirm('Cancel this emergency request?');">
+      {% csrf_token %}<button class="btn btn-block" type="submit">Cancel this request</button>
+    </form>
+    <p class="muted small center">Only possible before a responder accepts.</p>
+  </div>
+</div>
+{{ payload|json_script:"track-initial" }}
+{% endblock %}
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{% static 'js/tracking.js' %}"></script>
+{% endblock %}

@@ -4,6 +4,7 @@ from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from apps.accounts.models import Role
@@ -88,6 +89,27 @@ def overview(request):
 @ops_required
 def stats_api(request):
     return JsonResponse(analytics.dashboard_stats())
+
+
+@ops_required
+def new_incidents_api(request):
+    """Incidents created after the given id; polled by the alert banner."""
+    try:
+        after = int(request.GET.get("after", "0"))
+    except ValueError:
+        after = 0
+    rows = list(Incident.objects.select_related("citizen").filter(pk__gt=after).order_by("pk")[:20])
+    items = [
+        {
+            "id": i.pk,
+            "category": i.get_category_display(),
+            "where": i.address_text or ("GPS location" if i.has_location else ""),
+            "reporter": i.reporter_display,
+            "url": reverse("dashboard:incident_detail", args=[i.pk]),
+        }
+        for i in rows
+    ]
+    return JsonResponse({"latest_id": items[-1]["id"] if items else after, "new": items})
 
 
 # ---------- incidents ----------

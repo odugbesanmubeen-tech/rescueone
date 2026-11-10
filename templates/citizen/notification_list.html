@@ -1,0 +1,15 @@
+{% extends "citizen/base.html" %}
+{% block title %}Alerts{% endblock %}
+{% block content %}
+<h1>Alerts</h1>
+{% if page %}
+<form method="post" action="{% url 'citizens:notifications_read' %}">{% csrf_token %}<button class="btn btn-small" type="submit">Mark all read</button></form>
+<ul class="list">
+{% for n in page %}
+  <li class="{% if not n.is_read %}unread{% endif %}">{{ n.message }}
+    {% if n.incident_id %}<a href="{% url 'citizens:incident_detail' n.incident_id %}">View</a>{% endif %}
+    <div class="muted small">{{ n.created_at|timesince }} ago</div></li>
+{% endfor %}
+</ul>
+{% else %}<p class="empty">No alerts yet.</p>{% endif %}
+{% endblock %}

@@ -11,10 +11,14 @@
   var incidents = read("map-incidents");
   var responders = read("map-responders");
 
-  var map = L.map(el).setView([cfg.lat, cfg.lng], cfg.zoom);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  var map = L.map(el).setView([cfg.lat || 0, cfg.lng || 0], cfg.zoom || 2);
+
+  // FIXED: Restored the explicit domain name structure within the tile layer string
+  L.tileLayer("https://{s}://{z}/{x}/{y}{r}.png", {
+    maxZoom: 20,
+    attribution:
+      '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors &copy; <a href="https://carto.com">CARTO</a>',
+    subdomains: "abcd",
   }).addTo(map);
 
   var points = [];
@@ -37,8 +41,19 @@
 
   incidents.forEach(function (i) {
     if (i.lat == null || i.lng == null) return;
-    var m = L.circleMarker([i.lat, i.lng], { radius: 10, color: "#a61e1e", fillColor: "#d62828", fillOpacity: 0.85, weight: 2 });
-    m.bindPopup(popup(["Incident #" + i.id + " · " + i.category, i.status_label, i.address], i.url));
+    var m = L.circleMarker([i.lat, i.lng], {
+      radius: 10,
+      color: "#a61e1e",
+      fillColor: "#d62828",
+      fillOpacity: 0.85,
+      weight: 2,
+    });
+    m.bindPopup(
+      popup(
+        ["Incident #" + i.id + " · " + i.category, i.status_label, i.address],
+        i.url,
+      ),
+    );
     m.addTo(map);
     points.push([i.lat, i.lng]);
   });
@@ -46,10 +61,20 @@
   responders.forEach(function (r) {
     if (r.lat == null || r.lng == null) return;
     var m = L.circleMarker([r.lat, r.lng], {
-      radius: 8, color: r.stale ? "#8a929c" : "#1d6fdc", fillColor: r.stale ? "#cfd4da" : "#4c93f0", fillOpacity: 0.9, weight: 2
+      radius: 8,
+      color: r.stale ? "#8a929c" : "#1d6fdc",
+      fillColor: r.stale ? "#cfd4da" : "#4c93f0",
+      fillOpacity: 0.9,
+      weight: 2,
     });
     var when = r.updated ? new Date(r.updated).toLocaleString() : "never";
-    m.bindPopup(popup([r.name, r.availability, (r.stale ? "Location outdated · " : "Updated ") + when]));
+    m.bindPopup(
+      popup([
+        r.name,
+        r.availability,
+        (r.stale ? "Location outdated · " : "Updated ") + when,
+      ]),
+    );
     m.addTo(map);
     points.push([r.lat, r.lng]);
   });

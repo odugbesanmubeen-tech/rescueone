@@ -1,3 +1,7 @@
+import hashlib
+import secrets
+
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 
@@ -60,3 +64,23 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.display_name
+
+
+class AuthToken(models.Model):
+    """API token for the mobile app. Only a hash is stored; the raw key is shown once at login."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="api_tokens")
+    key_hash = models.CharField(max_length=64, unique=True)
+    name = models.CharField(max_length=80, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    @staticmethod
+    def hash_key(raw):
+        return hashlib.sha256(raw.encode()).hexdigest()
+
+    @classmethod
+    def issue(cls, user, name=""):
+        raw = secrets.token_urlsafe(32)
+        cls.objects.create(user=user, key_hash=cls.hash_key(raw), name=name[:80])
+        return raw

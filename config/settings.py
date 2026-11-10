@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "apps.analytics",
     "apps.audit",
     "apps.dashboard",
+    "apps.api",
 ]
 
 MIDDLEWARE = [
@@ -113,6 +114,9 @@ AUTH_USER_MODEL = "accounts.CustomUser"
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/dashboard/"
 LOGOUT_REDIRECT_URL = "/login/"
+
+# Mobile API tokens expire after this many days.
+API_TOKEN_DAYS = 90
 
 # Responder location older than this is flagged as outdated in the UI.
 STALE_LOCATION_MINUTES = 5

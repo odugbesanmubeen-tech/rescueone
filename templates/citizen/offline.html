@@ -1,0 +1,8 @@
+{% extends "citizen/base.html" %}
+{% block title %}Offline{% endblock %}
+{% block content %}
+<h1>You are offline</h1>
+<p>Emergency requests cannot be sent without an internet connection, and this app does not queue them.</p>
+<p><strong>If this is urgent, call your local emergency number now.</strong></p>
+<p><a class="btn btn-primary" href="{% url 'citizens:home' %}">Try again</a></p>
+{% endblock %}
