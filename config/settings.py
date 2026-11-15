@@ -13,7 +13,7 @@ if not SECRET_KEY:
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()]
 
 INSTALLED_APPS = [
-    "daphne",  # must be first so runserver uses ASGI (Channels)
+   # "daphne",  # must be first so runserver uses ASGI (Channels)
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",

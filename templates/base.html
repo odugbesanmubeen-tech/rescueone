@@ -1,16 +1,29 @@
+
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Emergency Response{% endblock %}</title>
+
+  <title>{% block title %}Rescue One | Emergency Response{% endblock %}</title>
+
+  <!-- Website Favicon -->
+  <link rel="icon" type="image/png"
+        href="{% static 'images/lap.png' %}">
+
+  <!-- Main CSS -->
   <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
   {% block extra_head %}{% endblock %}
 </head>
+
 <body>
   {% block content %}{% endblock %}
+
+  <!-- Main JavaScript -->
   <script src="{% static 'js/main.js' %}"></script>
+
   {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -66,7 +66,7 @@ class RegisterForm(forms.Form):
             phone=d["phone"],
             role=Role.CITIZEN,
         )
-        CitizenProfile.objects.create(user=user)
+        CitizenProfile.objects.get_or_create(user=user)
         return user
 
 
