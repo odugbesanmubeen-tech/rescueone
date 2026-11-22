@@ -64,3 +64,58 @@ def notification_json(n):
         "is_read": n.is_read,
         "created_at": n.created_at.isoformat(),
     }
+
+
+# ---------- responder ----------
+from apps.dispatch.models import AssignmentStatus  # noqa: E402
+from apps.locations.utils import haversine_km  # noqa: E402
+
+
+def profile_json(p):
+    return {
+        "availability": p.availability,
+        "availability_label": p.get_availability_display(),
+        "responder_type": p.get_responder_type_display(),
+        "station": p.station.name if p.station else "",
+        "vehicle": p.vehicle.number if p.vehicle else "",
+        "lat": p.lat,
+        "lng": p.lng,
+        "location_at": p.last_location_at.isoformat() if p.last_location_at else None,
+        "location_stale": p.location_is_stale,
+    }
+
+
+def assignment_json(a, profile):
+    inc = a.incident
+    distance = None
+    if inc.has_location and profile.has_location:
+        distance = round(haversine_km(inc.latitude, inc.longitude, profile.last_latitude, profile.last_longitude), 2)
+    # The caller's phone number is shared only after the responder accepts.
+    phone = ""
+    if a.status == AssignmentStatus.ACCEPTED:
+        phone = inc.citizen.phone if inc.citizen_id else inc.reporter_phone
+    return {
+        "id": a.pk,
+        "status": a.status,
+        "status_label": a.get_status_display(),
+        "offered_at": a.offered_at.isoformat(),
+        "responded_at": a.responded_at.isoformat() if a.responded_at else None,
+        "distance_km": distance,
+        "incident": {
+            "id": inc.pk,
+            "category": inc.category,
+            "category_label": inc.get_category_display(),
+            "status": inc.status,
+            "status_label": inc.get_status_display(),
+            "description": inc.description,
+            "address": inc.address_text,
+            "lat": inc.lat,
+            "lng": inc.lng,
+            "created_at": inc.created_at.isoformat(),
+            "reporter_name": inc.reporter_display,
+            "reporter_phone": phone,
+            "media": [
+                {"id": m.pk, "type": m.media_type, "url": reverse("api:media", args=[m.pk])} for m in inc.media.all()
+            ],
+        },
+    }

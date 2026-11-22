@@ -78,9 +78,11 @@ def logout(request):
     return JsonResponse({"ok": True})
 
 
-@api(["GET", "PUT"], roles=CITIZEN)
+@api(["GET", "PUT"], roles=MOBILE_ROLES)
 def me(request):
     if request.method == "PUT":
+        if request.user.role != Role.CITIZEN:
+            raise ApiError("Responder details are managed by an administrator.", 403)
         data = read_json(request)
         current = user_json(request.user)
         merged = {k: data.get(k, current[k]) for k in
@@ -140,14 +142,14 @@ def media(request, pk):
 
 
 # ---------- notifications ----------
-@api(["GET"], roles=CITIZEN)
+@api(["GET"], roles=MOBILE_ROLES)
 def notifications(request):
     rows = Notification.objects.filter(user=request.user)[:50]
     unread = Notification.objects.filter(user=request.user, is_read=False).count()
     return JsonResponse({"ok": True, "unread": unread, "results": [notification_json(n) for n in rows]})
 
 
-@api(["POST"], roles=CITIZEN)
+@api(["POST"], roles=MOBILE_ROLES)
 def notifications_read(request):
     Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
     return JsonResponse({"ok": True})
